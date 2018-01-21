@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"time"
+
+	"os"
+
 	"github.com/BurntSushi/toml"
 	"github.com/vidmed/logger"
-	"time"
 )
 
 var config_instance *TomlConfig
@@ -44,6 +47,12 @@ func NewConfig(file string) (*TomlConfig, error) {
 	if config_instance.Main.FlushFile == "" {
 		logger.Get().Fatalln("Main.FlushFile must be specified. Check your Config file")
 	}
+
+	f, err := os.OpenFile(config_instance.Main.FlushFile, os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		logger.Get().Fatalf("Main.FlushFile check error: %s", err.Error())
+	}
+	f.Close()
 	// todo check if file writable
 
 	return config_instance, nil
@@ -61,5 +70,5 @@ func dump(cfg *TomlConfig) {
 		time.Now().UTC(),
 		"\n---------------------Sevice started with config:\n",
 		buffer.String(),
-		"\n---------------------\n\n\n\n")
+		"\n---------------------\n")
 }

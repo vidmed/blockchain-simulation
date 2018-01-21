@@ -1,5 +1,5 @@
 [main]
     ListenStr  = "0.0.0.0:8080"
     LogLevel = 5 # panic = 0, fatal = 1, error = 2, warning = 3, info = 4, debug = 5
-    FlushPeriod = 120 # seconds to store `transactions` in memory
-    FlushFile = "transactions.json" # file name for storing `transactions` on a disk
+    FlushPeriod = 10 # seconds to store `transactions` in memory
+    FlushFile = "blocks.json" # file name for storing `transactions` on a disk

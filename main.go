@@ -1,19 +1,22 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
-	"context"
 	"syscall"
-	"flag"
+	"time"
+
+	"github.com/vidmed/blockchain-simulation/simulator"
 	"github.com/vidmed/logger"
-	"fmt"
 )
 
 var (
 	configFileName = flag.String("config", "config.toml", "Config file name")
+	sim            simulator.Simulator
 )
 
 func init() {
@@ -27,6 +30,7 @@ func init() {
 }
 
 func main() {
+	sim = simulator.NewSimulator(GetConfig().Main.FlushPeriod, GetConfig().Main.FlushFile)
 	runServer()
 }
 
@@ -41,6 +45,7 @@ func runServer() {
 		logger.Get().Infof("Listening on http://%s\n", hs.Addr)
 
 		if err := hs.ListenAndServe(); err != http.ErrServerClosed {
+			sim.Close()
 			logger.Get().Fatal(err.Error())
 		}
 	}()
@@ -58,21 +63,27 @@ func runServer() {
 	} else {
 		logger.Get().Infof("Server stopped")
 	}
+
+	// close simulator after server shutted down
+	sim.Close()
 }
 
 func tx(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	k, ok := q["key"]
-	if !ok {
+	k := q.Get("key")
+	if k == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("key is required"))
 		return
 	}
-	v, ok := q["value"]
-	if !ok {
+	v := q.Get("value")
+	if v == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("value is required"))
 		return
 	}
-	w.Write([]byte(fmt.Sprintf("%v %v", k, v)))
+	t := simulator.NewTransaction(k, v)
+	sim.Input() <- t
+	j, _ := json.Marshal(t)
+	w.Write(j)
 }
