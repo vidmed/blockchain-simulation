@@ -11,7 +11,7 @@ type block struct {
 func newBlock(prev string) *block {
 	return &block{
 		PrevHash: prev,
-		Hash:     uuid.NewV4().String(),
+		Hash:     uuid.Must(uuid.NewV4()).String(),
 	}
 }
 func (b *block) next() *block {
@@ -20,7 +20,7 @@ func (b *block) next() *block {
 	}
 	// to reduce GC work use the same struct
 	b.PrevHash = b.Hash
-	b.Hash = uuid.NewV4().String()
+	b.Hash = uuid.Must(uuid.NewV4()).String()
 	b.Transactions = nil
 	return b
 }

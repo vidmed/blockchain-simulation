@@ -18,7 +18,7 @@ type Transaction struct {
 // Id and Timestamp fields will be generated automatically.
 func NewTransaction(k, v string) *Transaction {
 	return &Transaction{
-		ID:        uuid.NewV4().String(),
+		ID:        uuid.Must(uuid.NewV4()).String(),
 		Key:       k,
 		Value:     v,
 		Timestamp: time.Now().UTC().Unix(),
