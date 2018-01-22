@@ -1,2 +1,4 @@
+.idea
+vendor
+blockchain-simulation
 config_local.toml
-.idea/

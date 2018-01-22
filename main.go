@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"net/http"
 	"os"
@@ -26,11 +25,14 @@ func init() {
 		logger.Get().Fatalf("ERROR loading config: %s\n", err.Error())
 	}
 	// Init logging, logger goes first since other components may use it
-	logger.Init(GetConfig().Main.LogLevel)
+	logger.Init(int(GetConfig().Main.LogLevel))
 }
 
 func main() {
-	sim = simulator.NewSimulator(GetConfig().Main.FlushPeriod, GetConfig().Main.FlushFile)
+	sim = simulator.NewSimulator(
+		GetConfig().Main.FlushPeriod,
+		GetConfig().Main.MaxTransactions,
+		GetConfig().Main.FlushFile)
 	runServer()
 }
 
@@ -54,8 +56,6 @@ func runServer() {
 
 	timeout := 15 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
 	logger.Get().Infof("Shutdown with timeout: %s\n", timeout)
 
 	if err := hs.Shutdown(ctx); err != nil {
@@ -63,6 +63,7 @@ func runServer() {
 	} else {
 		logger.Get().Infof("Server stopped")
 	}
+	cancel()
 
 	// close simulator after server shutted down
 	sim.Close()
@@ -82,8 +83,6 @@ func tx(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("value is required"))
 		return
 	}
-	t := simulator.NewTransaction(k, v)
-	sim.Input() <- t
-	j, _ := json.Marshal(t)
-	w.Write(j)
+	sim.Input() <- simulator.NewTransaction(k, v)
+	w.WriteHeader(http.StatusOK)
 }

@@ -16,6 +16,8 @@ import (
 // so the block is not flushed on disk.
 var ErrNoTransactions = errors.New("no transactions")
 
+// Simulator represents a blockchain simulator with adding transactions to a bloack
+// and flushing it on a disk.
 type Simulator interface {
 	// Close shuts down the simulator and waits for block data to be
 	// flushed. You must call this function when you don`t want to send
@@ -30,26 +32,29 @@ type Simulator interface {
 
 // implementation of Simulator interface
 type simulator struct {
-	flushPeriod time.Duration
-	flushFile   string
-	block       *Block
-	input       chan *Transaction
-	done        chan struct{}
+	flushPeriod     time.Duration
+	maxTransactions uint
+	flushFile       string
+	block           *block
+	input           chan *Transaction
+	done            chan struct{}
 
 	wg sync.WaitGroup
 }
 
 // NewSimulator creates new Simulator with given parameters
-func NewSimulator(flushPeriod int, flushFile string) Simulator {
+func NewSimulator(flushPeriod, maxTransactions uint, flushFile string) Simulator {
 	s := &simulator{
-		flushPeriod: time.Duration(flushPeriod) * time.Second,
-		flushFile:   flushFile,
-		input:       make(chan *Transaction),
-		done:        make(chan struct{}),
-		block:       NewBlock(""),
+		flushPeriod:     time.Duration(flushPeriod) * time.Second,
+		maxTransactions: maxTransactions,
+		flushFile:       flushFile,
+		input:           make(chan *Transaction),
+		done:            make(chan struct{}),
+		block:           newBlock(""),
 	}
 
 	s.wg.Add(1)
+
 	go s.start()
 
 	return s
@@ -67,15 +72,26 @@ func (s *simulator) Close() {
 
 func (s *simulator) start() {
 	sendTicker := time.NewTicker(s.flushPeriod)
+	c := uint(0)
 	for {
 		select {
 		case t := <-s.input:
 			logger.Get().Infof("Simulator got new Transaction: %v", t)
 			s.block.Transactions = append(s.block.Transactions, t)
+			c++
+			if c == s.maxTransactions {
+				sendTicker.Stop()
+				logger.Get().Infof("Number of transaction reached maximum value(%d). Flushing", s.maxTransactions)
+				s.flushBlock()
+				c = 0
+				// reset ticker
+				sendTicker = time.NewTicker(s.flushPeriod)
+			}
 		case <-sendTicker.C:
 			sendTicker.Stop()
 			logger.Get().Infoln("Simulator ticker fired")
 			s.flushBlock()
+			c = 0
 			// reset ticker
 			sendTicker = time.NewTicker(s.flushPeriod)
 		case <-s.done:
@@ -92,14 +108,14 @@ func (s *simulator) flushBlock() {
 	err := s.flush()
 	switch err {
 	case nil:
-		s.block = s.block.Next()
+		s.block = s.block.next()
 	case ErrNoTransactions:
 		// note in case if it is not allowed to save block without transaction
 		logger.Get().Warningln("There are no transactions in block while flush. Block haven`t been wrote on disk")
 		return
 	default: // other error
 		logger.Get().Errorf("Simulator flush error: %s", err.Error())
-		s.block = s.block.Next()
+		s.block = s.block.next()
 		// todo try to save data in some way
 	}
 }

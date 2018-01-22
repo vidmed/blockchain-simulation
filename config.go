@@ -11,51 +11,58 @@ import (
 	"github.com/vidmed/logger"
 )
 
-var config_instance *TomlConfig
+var configInstance *TomlConfig
 
+// TomlConfig represents a config
 type TomlConfig struct {
-	Main MainConfig
+	Main Main
 }
 
-type MainConfig struct {
-	ListenStr   string
-	LogLevel    int
-	FlushPeriod int
-	FlushFile   string
+// Main represent a main section of the TomlConfig
+type Main struct {
+	LogLevel        uint8
+	ListenStr       string
+	FlushPeriod     uint
+	MaxTransactions uint
+	FlushFile       string
 }
 
+// GetConfig returns application config
 func GetConfig() *TomlConfig {
-	return config_instance
+	return configInstance
 }
 
+// NewConfig creates new application config with given .toml file
 func NewConfig(file string) (*TomlConfig, error) {
-	config_instance = &TomlConfig{}
+	configInstance = &TomlConfig{}
 
-	if _, err := toml.DecodeFile(file, config_instance); err != nil {
+	if _, err := toml.DecodeFile(file, configInstance); err != nil {
 		return nil, err
 	}
-	dump(config_instance)
+	dump(configInstance)
 
 	// check required fields
 	// Main
-	if config_instance.Main.ListenStr == "" {
+	if configInstance.Main.ListenStr == "" {
 		logger.Get().Fatalln("Main.ListenStr must be specified. Check your Config file")
 	}
-	if config_instance.Main.FlushPeriod == 0 {
+	if configInstance.Main.FlushPeriod == 0 {
 		logger.Get().Fatalln("Main.FlushPeriod must be specified. Check your Config file")
 	}
-	if config_instance.Main.FlushFile == "" {
+	if configInstance.Main.MaxTransactions == 0 {
+		logger.Get().Fatalln("Main.MaxTransactions must be specified. Check your Config file")
+	}
+	if configInstance.Main.FlushFile == "" {
 		logger.Get().Fatalln("Main.FlushFile must be specified. Check your Config file")
 	}
 
-	f, err := os.OpenFile(config_instance.Main.FlushFile, os.O_RDONLY|os.O_CREATE, 0666)
+	f, err := os.OpenFile(configInstance.Main.FlushFile, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		logger.Get().Fatalf("Main.FlushFile check error: %s", err.Error())
 	}
 	f.Close()
-	// todo check if file writable
 
-	return config_instance, nil
+	return configInstance, nil
 }
 
 func dump(cfg *TomlConfig) {
@@ -70,5 +77,5 @@ func dump(cfg *TomlConfig) {
 		time.Now().UTC(),
 		"\n---------------------Sevice started with config:\n",
 		buffer.String(),
-		"\n---------------------\n")
+		"\n---------------------")
 }

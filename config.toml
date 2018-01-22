@@ -2,4 +2,5 @@
     ListenStr  = "0.0.0.0:8080"
     LogLevel = 5 # panic = 0, fatal = 1, error = 2, warning = 3, info = 4, debug = 5
     FlushPeriod = 10 # seconds to store `transactions` in memory
+    MaxTransactions = 2 # Max amount of transactions in block. When the capacity will be reached - the block will be flushed on disk
     FlushFile = "blocks.json" # file name for storing `transactions` on a disk

@@ -2,18 +2,25 @@ package simulator
 
 import "github.com/satori/go.uuid"
 
-type Block struct {
+type block struct {
 	PrevHash     string         `json:"prev-block-hash"`
 	Hash         string         `json:"block-hash"`
 	Transactions []*Transaction `json:"transactions"`
 }
 
-func NewBlock(prev string) *Block {
-	return &Block{
+func newBlock(prev string) *block {
+	return &block{
 		PrevHash: prev,
-		Hash:     uuid.Must(uuid.NewV4()).String(),
+		Hash:     uuid.NewV4().String(),
 	}
 }
-func (b *Block) Next() *Block {
-	return NewBlock(b.Hash)
+func (b *block) next() *block {
+	if b == nil {
+		return newBlock("")
+	}
+	// to reduce GC work use the same struct
+	b.PrevHash = b.Hash
+	b.Hash = uuid.NewV4().String()
+	b.Transactions = nil
+	return b
 }
