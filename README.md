@@ -1,6 +1,11 @@
 # This is a small blockchain simulation.
 
 ### Install app and dependencies
+First of all install this app via `go get`:
+
+`go get -u github.com/vidmed/blockchain-simulation`
+
+Install dependecies and build:
 1. Install go dep if it is not installed `go get -u github.com/golang/dep/cmd/dep`
 2. Ensure dependencies `dep ensure`
 3. Build and run app `go build`
