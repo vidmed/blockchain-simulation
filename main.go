@@ -40,7 +40,7 @@ func runServer() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	http.HandleFunc("/tx", tx)
+	http.HandleFunc("/tx", recoverHandler(txHandler))
 	hs := &http.Server{Addr: GetConfig().Main.ListenStr, Handler: nil}
 
 	go func() {
@@ -69,20 +69,31 @@ func runServer() {
 	sim.Close()
 }
 
-func tx(w http.ResponseWriter, r *http.Request) {
+func txHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	k := q.Get("key")
 	if k == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("key is required"))
+		http.Error(w, "key is required", http.StatusBadRequest)
 		return
 	}
 	v := q.Get("value")
 	if v == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("value is required"))
+		http.Error(w, "value is required", http.StatusBadRequest)
 		return
 	}
 	sim.Input() <- simulator.NewTransaction(k, v)
 	w.WriteHeader(http.StatusOK)
+}
+
+func recoverHandler(handler func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				logger.Get().Errorf("panic: %+v", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		}()
+
+		handler(w, r)
+	}
 }
